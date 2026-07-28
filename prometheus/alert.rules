@@ -1,0 +1,61 @@
+# Thresholds below are set for a gigabit fibre line on a direct connection.
+# Tune them to your own plan before you trust the alerts — on a 100/20 plan, or
+# behind a VPN, the speed and latency rules will fire continuously and you will
+# learn to ignore them. Reload without a restart after editing:
+#   curl -X POST http://localhost:9091/-/reload
+groups:
+  - name: isp_monitor_alerts
+    rules:
+      - alert: SlowDownloadSpeed
+        expr: speedtest_tracker_download_bits < 800000000
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Download speed below 800 Mbps ({{ $value | humanize1024 }}bps)"
+          description: "Speedtest download speed has dropped below 800 Mbps. Current value: {{ $value | humanize1024 }}bps."
+
+      - alert: SlowUploadSpeed
+        expr: speedtest_tracker_upload_bits < 400000000
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Upload speed below 400 Mbps ({{ $value | humanize1024 }}bps)"
+          description: "Speedtest upload speed has dropped below 400 Mbps. Current value: {{ $value | humanize1024 }}bps."
+
+      - alert: HighPacketLoss
+        expr: probe_success{job=~"blackbox.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Packet loss detected for {{ $labels.instance }}"
+          description: "Probe to {{ $labels.instance }} has been failing for more than 2 minutes."
+
+      - alert: TargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Target {{ $labels.instance }} is down"
+          description: "The target {{ $labels.instance }} (job: {{ $labels.job }}) has been unreachable for more than 5 minutes."
+
+      - alert: HighLatency
+        expr: probe_duration_seconds{job=~"blackbox.*"} > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency detected for {{ $labels.instance }}"
+          description: "Probe to {{ $labels.instance }} has exceeded 50ms latency for more than 5 minutes. Current value: {{ $value }}s."
+
+      - alert: HighJitter
+        expr: stddev_over_time(probe_duration_seconds{job=~"blackbox.*"}[10m]) > 0.01
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High jitter detected for {{ $labels.instance }}"
+          description: "Probe to {{ $labels.instance }} shows jitter (stddev) above 10ms over the last 10 minutes. Current stddev: {{ $value }}s."

@@ -1,0 +1,158 @@
+services:
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    restart: unless-stopped
+    mem_limit: 256m
+    ports:
+      - "8082:80"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+      - APP_KEY=${APP_KEY}
+      - SPEEDTEST_SCHEDULE=${SPEEDTEST_SCHEDULE}
+      - DB_CONNECTION=sqlite
+      # Read only by the first-run migration that seeds the admin user. Without
+      # these the image creates admin@example.com / password and leaves it
+      # there. Changing them later has no effect — the user already exists.
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    volumes:
+      - speedtest-data:/config
+    networks:
+      - isp-monitor
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    mem_limit: 512m
+    ports:
+      - "9091:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=365d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/pinghosts.yaml:/etc/prometheus/pinghosts.yaml:ro
+      - ./prometheus/alert.rules:/etc/prometheus/alert.rules:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - speedtest-tracker
+      - blackbox-exporter
+      - node-exporter
+    networks:
+      - isp-monitor
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    restart: unless-stopped
+    mem_limit: 512m
+    ports:
+      - "3003:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - isp-monitor
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    restart: unless-stopped
+    mem_limit: 128m
+    ports:
+      - "9115:9115"
+    cap_add:
+      - NET_RAW
+    volumes:
+      - ./blackbox/config/blackbox.yml:/config/blackbox.yml:ro
+    command:
+      - --config.file=/config/blackbox.yml
+    networks:
+      - isp-monitor
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    restart: unless-stopped
+    mem_limit: 256m
+    ports:
+      - "3002:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+    networks:
+      - isp-monitor
+
+  smokeping:
+    image: lscr.io/linuxserver/smokeping:latest
+    restart: unless-stopped
+    mem_limit: 128m
+    ports:
+      - "8081:80"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    volumes:
+      - smokeping-config:/config
+      - smokeping-data:/data
+      - ./smokeping/config/Targets:/config/Targets:ro
+    networks:
+      - isp-monitor
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    mem_limit: 128m
+    ports:
+      - "9100:9100"
+    # Without these, node-exporter reports the *container's* filesystem rather
+    # than the host's — the only mounts it can see are the /etc/hosts and
+    # /etc/resolv.conf files Docker injects, so the Disk Usage panel has
+    # nothing to graph. --path.rootfs makes it strip the /rootfs prefix, so
+    # the host root still comes back labelled mountpoint="/".
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro,rslave
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker/.+)($$|/)
+    networks:
+      - isp-monitor
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    restart: unless-stopped
+    mem_limit: 128m
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    depends_on:
+      - prometheus
+    networks:
+      - isp-monitor
+
+volumes:
+  speedtest-data:
+  prometheus-data:
+  grafana-data:
+  uptime-kuma-data:
+  smokeping-config:
+  smokeping-data:
+  alertmanager-data:
+
+networks:
+  isp-monitor:

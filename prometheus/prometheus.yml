@@ -1,0 +1,76 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert.rules"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  # Speedtest Tracker metrics.
+  #
+  # This endpoint is off by default and 404s until you enable it in the
+  # Speedtest Tracker UI under Settings -> Data Integration -> Prometheus.
+  # See "Enable the Prometheus endpoint" in the README.
+  # Scrape faster than Prometheus's 5m lookback delta, or instant queries land
+  # in the gap between scrapes and every speed panel reads "No data" for most
+  # of the hour. The exporter only ever publishes the newest result, so a 60s
+  # interval just holds that value steady between speedtests — it does not
+  # trigger extra tests.
+  - job_name: "speedtest-tracker"
+    scrape_interval: 60s
+    metrics_path: /prometheus
+    static_configs:
+      - targets: ["speedtest-tracker:80"]
+
+  # Blackbox HTTP probes
+  - job_name: "blackbox-http"
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    file_sd_configs:
+      - files:
+          - pinghosts.yaml
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Blackbox ICMP probes
+  - job_name: "blackbox-icmp"
+    scrape_interval: 30s
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+          - 8.8.8.8
+          - 1.1.1.1
+          - 208.67.222.222
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Node Exporter (host metrics)
+  - job_name: "node-exporter"
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Blackbox Exporter self-metrics
+  - job_name: "blackbox-exporter"
+    static_configs:
+      - targets: ["blackbox-exporter:9115"]

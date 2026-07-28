@@ -1,0 +1,9 @@
+# Every .env variant is secret-bearing; only the template is committed.
+.env*
+!.env.example
+*.rrd
+__pycache__/
+*.pyc
+data/
+*.db
+*.log

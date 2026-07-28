@@ -1,0 +1,219 @@
+# ISP Monitor
+
+[![CI](https://github.com/scaso01/isp-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/scaso01/isp-monitor/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Your ISP promises a gigabit. This tells you what you actually got, every hour of
+every day, with a year of receipts.
+
+A self-hosted Docker Compose stack that runs Ookla speed tests on a schedule,
+probes the wider internet for latency and packet loss, watches your own uptime,
+and puts all of it behind Grafana. Eight containers, one `docker compose up`,
+under 700 MB of RAM.
+
+![ISP Uptime and Latency dashboard](docs/images/grafana-isp-uptime.png)
+
+## Why
+
+Complaining to an ISP without data is a losing conversation. "It feels slow" gets
+you a router reboot script read off a card. A chart showing your download speed
+sitting at 40% of plan every weeknight between 8 and 11 PM gets you a truck roll.
+
+This stack exists to produce that chart. Prometheus keeps 365 days of it, so the
+evidence outlives the argument.
+
+## What you get
+
+- **Scheduled speed tests** — Ookla download, upload, ping and jitter on a cron
+  you choose, stored and charted.
+- **Latency and loss probes** — Blackbox Exporter hits six public endpoints over
+  HTTPS and three DNS resolvers over ICMP, every 30 seconds.
+- **Smoke graphs** — SmokePing's classic latency-distribution view over a dozen
+  targets, the fastest way to see jitter that averages hide.
+- **Independent uptime checks** — Uptime Kuma, with its own status page and its
+  own notification channels, as a second opinion.
+- **Alerting** — six Prometheus rules through Alertmanager, with email and Slack
+  receivers a comment-uncomment away.
+- **Host metrics** — CPU, memory, disk and network for the box doing the
+  monitoring, so you can tell "my internet is slow" from "my server is busy".
+
+## Quick start
+
+```bash
+git clone https://github.com/scaso01/isp-monitor.git
+cd isp-monitor
+cp .env.example .env
+```
+
+Generate the `APP_KEY` Speedtest Tracker needs and paste it into `.env`:
+
+```bash
+docker run --rm lscr.io/linuxserver/speedtest-tracker:latest \
+  php artisan key:generate --show
+```
+
+Set `ADMIN_EMAIL`, `ADMIN_PASSWORD` and `GF_SECURITY_ADMIN_PASSWORD` in `.env`
+while you are in there. The Speedtest Tracker pair is seeded by a first-run
+migration, so it only takes effect if you set it *before* the first start —
+otherwise you are left with `admin@example.com` / `password` and have to change
+it in the UI. Then:
+
+```bash
+docker compose up -d
+```
+
+Give it two or three minutes to pull images and settle.
+
+### Enable the Prometheus endpoint
+
+**Do this or the speed dashboard stays empty.** Speedtest Tracker ships its
+Prometheus exporter switched off, and the endpoint returns a 404 until you turn
+it on — there is no environment variable for it, it is a stored setting.
+
+1. Open <http://localhost:8082> and log in with the `ADMIN_EMAIL` /
+   `ADMIN_PASSWORD` you set above.
+2. Go to **Settings → Data Integration**.
+3. Tick **Prometheus**, and save.
+
+Prometheus picks it up on the next scrape. Confirm with:
+
+```bash
+curl -s http://localhost:8082/prometheus | head
+```
+
+You want `speedtest_tracker_download_bits{...}` in the output. `# no data
+available` means the exporter is on but no speed test has finished yet — wait
+for the first scheduled run, or trigger one from the Speedtest Tracker UI.
+
+## Services
+
+Several of these images default to popular ports (3000, 8080, 9090), so the
+stack deliberately publishes them shifted to coexist with other Compose
+projects. Each mapping is `host:container` — change the left number if it
+collides on your machine, leave the right one alone.
+
+| Service | URL | Mapping | Purpose |
+|---------|-----|---------|---------|
+| Speedtest Tracker | <http://localhost:8082> | `8082:80` | Ookla speed tests on a schedule |
+| Grafana | <http://localhost:3003> | `3003:3000` | The three dashboards below |
+| Uptime Kuma | <http://localhost:3002> | `3002:3001` | Independent uptime checks + status page |
+| SmokePing | <http://localhost:8081> | `8081:80` | Latency distribution graphs |
+| Prometheus | <http://localhost:9091> | `9091:9090` | Metric storage, 365-day retention |
+| Alertmanager | <http://localhost:9093> | `9093:9093` | Alert routing and grouping |
+| Blackbox Exporter | scraped internally | `9115:9115` | HTTP and ICMP probes |
+| Node Exporter | scraped internally | `9100:9100` | Host CPU, RAM, disk, network |
+
+## Dashboards
+
+All three are provisioned from `grafana/dashboards/` on startup — nothing to
+import by hand.
+
+### ISP Speed Monitor
+
+Download and upload against your plan, ping, jitter, a speed histogram, and a
+table of recent runs. Note that Prometheus only records what it scrapes, so this
+dashboard starts empty and fills in from the moment you install — Speedtest
+Tracker's own UI is where the full result history lives.
+
+### ISP Uptime & Latency
+
+Probe success timeline, HTTP latency per target, DNS lookup time, TLS
+certificate expiry, and the HTTP request phase breakdown — DNS, connect, TLS,
+processing, transfer — which is how you tell a slow site from a slow line.
+
+![ISP Uptime and Latency dashboard](docs/images/grafana-isp-uptime.png)
+
+### Host System Metrics
+
+CPU by mode, memory breakdown, disk usage and I/O, network throughput.
+
+![Host System Metrics dashboard](docs/images/grafana-host-metrics.png)
+
+### SmokePing
+
+Outside Grafana, SmokePing keeps its own RRD history and draws the smoke graphs
+it is named for — the grey band is the spread of individual pings, so jitter
+shows up as thickness rather than being averaged away.
+
+![SmokePing latency graphs](docs/images/smokeping-latency.png)
+
+## Alerts
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| SlowDownloadSpeed | Download < 800 Mbps | Warning |
+| SlowUploadSpeed | Upload < 400 Mbps | Warning |
+| HighPacketLoss | Probe failing > 2 min | Critical |
+| TargetDown | Scrape target unreachable > 5 min | Critical |
+| HighLatency | Probe > 50 ms for 5 min | Warning |
+| HighJitter | Probe stddev > 10 ms over 10 min | Warning |
+
+**These defaults assume a gigabit fibre line on a direct connection.** On a
+slower plan, or behind a VPN, the speed and latency rules will fire constantly
+and you will start ignoring them. Edit `prometheus/alert.rules` to match your
+plan, then reload without restarting:
+
+```bash
+curl -X POST http://localhost:9091/-/reload
+```
+
+Alerts land in the Alertmanager UI by default and go nowhere else.
+`alertmanager/alertmanager.yml` carries commented-out email and Slack receivers
+— uncomment one and fill it in. Uptime Kuma has its own notification providers
+(Telegram, Discord, ntfy, and others), configured in its web UI.
+
+## Tuning what gets probed
+
+- `prometheus/pinghosts.yaml` — the HTTPS endpoints Blackbox probes.
+- `prometheus/prometheus.yml` — the ICMP targets, and every scrape interval.
+- `smokeping/config/Targets` — the SmokePing tree.
+- `.env` — `SPEEDTEST_SCHEDULE` takes a cron expression; the default is every
+  three hours. Ookla rate-limits aggressive schedules, and each test moves real
+  data, so think before going below hourly.
+
+## Resource usage
+
+Measured with `docker stats` on a running instance carrying five months of
+history:
+
+| Service | RAM |
+|---------|-----|
+| Prometheus | 185 MB |
+| Grafana | 181 MB |
+| Uptime Kuma | 118 MB |
+| Speedtest Tracker | 111 MB |
+| Blackbox Exporter | 28 MB |
+| Node Exporter | 18 MB |
+| Alertmanager | 15 MB |
+| SmokePing | 13 MB |
+| **Total** | **~669 MB** |
+
+Every service carries a `mem_limit` in the Compose file. Prometheus grows with
+retention, so a fresh install starts lighter than this.
+
+Prometheus is set to 365-day retention. At these scrape intervals the same
+instance reached 2.1 GB of TSDB after five months, so budget around 5 GB for a
+full year.
+
+## Management
+
+```bash
+docker compose logs -f speedtest-tracker   # follow one service
+docker compose restart prometheus          # restart one service
+docker compose down                        # stop, keep data
+docker compose down -v                     # stop, delete all data
+```
+
+Configuration changes to Prometheus and Alertmanager do not need a restart:
+
+```bash
+curl -X POST http://localhost:9091/-/reload   # prometheus
+curl -X POST http://localhost:9093/-/reload   # alertmanager
+```
+
+Grafana rescans `grafana/dashboards/` every 30 seconds, so edited dashboard JSON
+applies on its own.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

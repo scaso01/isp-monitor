@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The compose file is the whole product, so the useful check is simply
+      # that it still parses and every referenced config file exists. Runners
+      # ship with Docker Compose already installed.
+      - name: Validate docker-compose.yml
+        run: docker compose --env-file .env.example config --quiet
+
+      # promtool resolves rule_files and file_sd_configs relative to the working
+      # directory, not to the config file, so run it from inside the mount.
+      - name: Validate Prometheus config and alert rules
+        run: |
+          docker run --rm -v "$PWD/prometheus:/etc/prometheus:ro" \
+            -w /etc/prometheus --entrypoint promtool prom/prometheus:latest \
+            check config prometheus.yml
+
+      - name: Validate Alertmanager config
+        run: |
+          docker run --rm -v "$PWD/alertmanager:/etc/alertmanager:ro" \
+            --entrypoint amtool prom/alertmanager:latest \
+            check-config /etc/alertmanager/alertmanager.yml
+
+      - name: Check dashboard JSON parses
+        run: |
+          for f in grafana/dashboards/*.json; do
+            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"
+            echo "ok: $f"
+          done
+
+  smoke:
+    name: Boot the stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Config that parses is not the same as a stack that runs. Every service
+      # here has to answer over HTTP, and Prometheus has to reach the exporters
+      # it is configured to scrape — that is the part a config check cannot see.
+      - name: Write .env
+        run: |
+          sed -e "s|^APP_KEY=.*|APP_KEY=base64:$(head -c 32 /dev/urandom | base64)|" \
+              -e "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=ci-not-a-real-password|" \
+              -e "s|^GF_SECURITY_ADMIN_PASSWORD=.*|GF_SECURITY_ADMIN_PASSWORD=ci-not-a-real-password|" \
+              .env.example > .env
+
+      - name: Start the stack
+        run: docker compose up -d
+
+      - name: Wait for every published endpoint
+        run: |
+          set -e
+          check() {
+            name=$1; url=$2
+            for i in $(seq 1 60); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$url" || true)
+              case "$code" in
+                2*|3*) echo "ok: $name ($code)"; return 0 ;;
+              esac
+              sleep 5
+            done
+            echo "FAILED: $name never answered on $url (last code: $code)"
+            docker compose logs --tail 40 "$3"
+            return 1
+          }
+          check "Speedtest Tracker" http://localhost:8082/         speedtest-tracker
+          check "Grafana"           http://localhost:3003/login    grafana
+          check "Uptime Kuma"       http://localhost:3002/         uptime-kuma
+          check "SmokePing"         http://localhost:8081/smokeping/ smokeping
+          check "Prometheus"        http://localhost:9091/-/ready  prometheus
+          check "Alertmanager"      http://localhost:9093/-/ready  alertmanager
+          check "Blackbox Exporter" http://localhost:9115/         blackbox-exporter
+          check "Node Exporter"     http://localhost:9100/metrics  node-exporter
+
+      # The speedtest-tracker target is deliberately excluded: its exporter is
+      # off until an operator enables it in the UI, which CI cannot do. Every
+      # other target failing here is a real regression.
+      - name: Assert Prometheus is scraping its targets
+        run: |
+          sleep 45
+          curl -s http://localhost:9091/api/v1/targets > targets.json
+          python3 - <<'PY'
+          import json, sys
+          targets = json.load(open("targets.json"))["data"]["activeTargets"]
+          bad = [t for t in targets
+                 if t["labels"]["job"] != "speedtest-tracker" and t["health"] != "up"]
+          for t in targets:
+              print(f'{t["labels"]["job"]:20} {t["health"]:8} {t["scrapeUrl"]}')
+          if bad:
+              print(f"\n{len(bad)} target(s) not up", file=sys.stderr)
+              sys.exit(1)
+          print(f"\nall {len(targets) - 1} scrapeable targets up")
+          PY
+
+      - name: Assert node-exporter reports the host filesystem
+        run: |
+          # Without the /proc, /sys and / bind mounts, node-exporter reports the
+          # container's own filesystem and the Disk Usage panel has no data.
+          curl -s 'http://localhost:9091/api/v1/query' \
+            --data-urlencode 'query=node_filesystem_size_bytes{mountpoint="/"}' \
+            | python3 -c "import json,sys; r=json.load(sys.stdin)['data']['result']; print('root filesystem series:', len(r)); sys.exit(0 if r else 1)"
+
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose logs --tail 60
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

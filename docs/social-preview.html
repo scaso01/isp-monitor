@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1280px;
+    height: 640px;
+    background: #0b0f14;
+    background-image:
+      radial-gradient(ellipse 900px 500px at 78% 18%, rgba(56,189,248,.16), transparent 62%),
+      radial-gradient(ellipse 700px 420px at 12% 88%, rgba(52,211,153,.11), transparent 60%);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: #e6edf3;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 62px 68px 54px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Faint grid, like a chart backdrop. */
+  body::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+    background-size: 64px 64px;
+    pointer-events: none;
+  }
+
+  .top { position: relative; z-index: 1; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 15px; font-weight: 600; letter-spacing: .16em;
+    text-transform: uppercase; color: #7dd3fc;
+    border: 1px solid rgba(125,211,252,.32);
+    border-radius: 999px; padding: 8px 18px;
+    background: rgba(125,211,252,.07);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #34d399; box-shadow: 0 0 12px #34d399;
+  }
+
+  h1 {
+    font-size: 92px; font-weight: 800; letter-spacing: -.032em;
+    margin-top: 30px; line-height: 1;
+  }
+  h1 .accent {
+    background: linear-gradient(96deg, #38bdf8, #34d399);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  .tagline {
+    margin-top: 22px; font-size: 29px; line-height: 1.4;
+    color: #9fb0c0; max-width: 830px; font-weight: 400;
+  }
+  .tagline strong { color: #e6edf3; font-weight: 600; }
+
+  .bottom {
+    position: relative; z-index: 1;
+    display: flex; align-items: flex-end; justify-content: space-between;
+  }
+
+  .stack { display: flex; gap: 13px; flex-wrap: wrap; max-width: 880px; }
+  .chip {
+    font-size: 18px; font-weight: 500; color: #c3d0dc;
+    border: 1px solid rgba(255,255,255,.11);
+    background: rgba(255,255,255,.045);
+    border-radius: 9px; padding: 11px 18px;
+  }
+
+  .badge { text-align: right; flex-shrink: 0; }
+  .badge .n {
+    font-size: 62px; font-weight: 800; letter-spacing: -.03em;
+    background: linear-gradient(96deg, #38bdf8, #34d399);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    line-height: 1;
+  }
+  .badge .l {
+    font-size: 16px; color: #8195a6; margin-top: 8px;
+    letter-spacing: .1em; text-transform: uppercase; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="eyebrow"><span class="dot"></span>Self-hosted &middot; Docker Compose</div>
+    <h1>ISP <span class="accent">Monitor</span></h1>
+    <p class="tagline">
+      Your ISP promises a gigabit. This tells you <strong>what you actually got</strong> &mdash;
+      every hour, with a year of receipts.
+    </p>
+  </div>
+
+  <div class="bottom">
+    <div class="stack">
+      <span class="chip">Prometheus</span>
+      <span class="chip">Grafana</span>
+      <span class="chip">Speedtest Tracker</span>
+      <span class="chip">Blackbox Exporter</span>
+      <span class="chip">SmokePing</span>
+      <span class="chip">Uptime Kuma</span>
+      <span class="chip">Alertmanager</span>
+    </div>
+    <div class="badge">
+      <div class="n">365d</div>
+      <div class="l">retention</div>
+    </div>
+  </div>
+</body>
+</html>

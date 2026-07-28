@@ -1,0 +1,4 @@
+# Everything here is read by Linux containers; keep LF in the repo regardless
+# of what the contributor's checkout does.
+* text=auto eol=lf
+*.png binary

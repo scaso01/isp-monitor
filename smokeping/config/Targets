@@ -1,0 +1,79 @@
+*** Targets ***
+
+probe = FPing
+
+menu = Top
+title = ISP Monitor - Network Latency
+remark = Continuous latency and jitter monitoring for ISP accountability
+
++ InternetServices
+menu = Internet Services
+title = Internet Services
+
+++ Google
+menu = Google DNS
+title = Google DNS (8.8.8.8)
+host = 8.8.8.8
+
+++ GoogleSecondary
+menu = Google DNS Secondary
+title = Google DNS Secondary (8.8.4.4)
+host = 8.8.4.4
+
+++ Cloudflare
+menu = Cloudflare DNS
+title = Cloudflare DNS (1.1.1.1)
+host = 1.1.1.1
+
+++ CloudflareSecondary
+menu = Cloudflare DNS Secondary
+title = Cloudflare DNS Secondary (1.0.0.1)
+host = 1.0.0.1
+
+++ OpenDNS
+menu = OpenDNS
+title = OpenDNS (208.67.222.222)
+host = 208.67.222.222
+
++ CDNs
+menu = CDN Providers
+title = CDN and Cloud Providers
+
+++ CloudflareCDN
+menu = Cloudflare CDN
+title = Cloudflare CDN
+host = www.cloudflare.com
+
+++ AmazonAWS
+menu = Amazon AWS
+title = Amazon AWS
+host = aws.amazon.com
+
+++ MicrosoftAzure
+menu = Microsoft Azure
+title = Microsoft Azure
+host = azure.microsoft.com
+
+++ GoogleCloud
+menu = Google Cloud
+title = Google Cloud
+host = cloud.google.com
+
++ PopularSites
+menu = Popular Sites
+title = Popular Websites
+
+++ GitHub
+menu = GitHub
+title = GitHub
+host = github.com
+
+++ Google
+menu = Google
+title = Google Search
+host = www.google.com
+
+++ Netflix
+menu = Netflix
+title = Netflix
+host = www.netflix.com
