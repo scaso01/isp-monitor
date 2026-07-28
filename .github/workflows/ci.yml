@@ -11,7 +11,7 @@ jobs:
     name: Validate configuration
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The compose file is the whole product, so the useful check is simply
       # that it still parses and every referenced config file exists. Runners
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Config that parses is not the same as a stack that runs. Every service
       # here has to answer over HTTP, and Prometheus has to reach the exporters
