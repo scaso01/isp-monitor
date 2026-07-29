@@ -78,7 +78,6 @@ jobs:
           }
           check "Speedtest Tracker" http://localhost:8082/         speedtest-tracker
           check "Grafana"           http://localhost:3003/login    grafana
-          check "Uptime Kuma"       http://localhost:3002/         uptime-kuma
           check "SmokePing"         http://localhost:8081/smokeping/ smokeping
           check "Prometheus"        http://localhost:9091/-/ready  prometheus
           check "Alertmanager"      http://localhost:9093/-/ready  alertmanager

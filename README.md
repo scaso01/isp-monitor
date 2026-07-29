@@ -7,9 +7,11 @@ Your ISP promises a gigabit. This tells you what you actually got, every hour of
 every day, with a year of receipts.
 
 A self-hosted Docker Compose stack that runs Ookla speed tests on a schedule,
-probes the wider internet for latency and packet loss, watches your own uptime,
-and puts all of it behind Grafana. Eight containers, one `docker compose up`,
-under 700 MB of RAM.
+probes the wider internet for latency and packet loss, tracks the machine doing
+the watching, and puts all of it behind Grafana. Seven containers, one
+`docker compose up`, under 600 MB of RAM. Every dashboard, probe target and
+alert rule is a file in this repo, so the stack comes up already configured. One
+setting has to be switched on by hand afterwards, covered below.
 
 ![ISP Uptime and Latency dashboard](docs/images/grafana-isp-uptime.png)
 
@@ -30,8 +32,6 @@ evidence outlives the argument.
   HTTPS and three DNS resolvers over ICMP, every 30 seconds.
 - **Smoke graphs** — SmokePing's classic latency-distribution view over a dozen
   targets, the fastest way to see jitter that averages hide.
-- **Independent uptime checks** — Uptime Kuma, with its own status page and its
-  own notification channels, as a second opinion.
 - **Alerting** — six Prometheus rules through Alertmanager, with email and Slack
   receivers a comment-uncomment away.
 - **Host metrics** — CPU, memory, disk and network for the box doing the
@@ -45,12 +45,23 @@ cd isp-monitor
 cp .env.example .env
 ```
 
-Generate the `APP_KEY` Speedtest Tracker needs and paste it into `.env`:
+Generate the `APP_KEY` Speedtest Tracker needs and paste it into `.env`. It is
+just 32 random bytes, base64 encoded, with a `base64:` prefix:
 
 ```bash
-docker run --rm lscr.io/linuxserver/speedtest-tracker:latest \
-  php artisan key:generate --show
+echo "base64:$(openssl rand -base64 32)"
 ```
+
+No openssl on the machine? Docker is already a given here, so:
+
+```bash
+docker run --rm --entrypoint php lscr.io/linuxserver/speedtest-tracker:latest \
+  /app/www/artisan key:generate --show
+```
+
+The `--entrypoint php` matters. This image runs s6-overlay as pid 1 and simply
+passing `php artisan ...` as the command exits with
+`s6-overlay-suexec: fatal: can only run as pid 1`.
 
 Set `ADMIN_EMAIL`, `ADMIN_PASSWORD` and `GF_SECURITY_ADMIN_PASSWORD` in `.env`
 while you are in there. The Speedtest Tracker pair is seeded by a first-run
@@ -70,10 +81,13 @@ Give it two or three minutes to pull images and settle.
 Prometheus exporter switched off, and the endpoint returns a 404 until you turn
 it on — there is no environment variable for it, it is a stored setting.
 
-1. Open <http://localhost:8082> and log in with the `ADMIN_EMAIL` /
-   `ADMIN_PASSWORD` you set above.
-2. Go to **Settings → Data Integration**.
-3. Tick **Prometheus**, and save.
+1. Open <http://localhost:8082/admin> and log in with the `ADMIN_EMAIL` /
+   `ADMIN_PASSWORD` you set above. Port 8082 on its own serves a Getting Started
+   page with no login form on it, so go straight to `/admin`.
+2. In the left sidebar, under **Settings**, click **Data Integration**.
+3. That page opens on the **InfluxDB v2** tab. Switch to the **Prometheus** tab,
+   turn on **Enable**, then **Save changes**. Both tabs have a toggle labelled
+   the same thing, so check which one you are on before flipping it.
 
 Prometheus picks it up on the next scrape. Confirm with:
 
@@ -96,7 +110,6 @@ collides on your machine, leave the right one alone.
 |---------|-----|---------|---------|
 | Speedtest Tracker | <http://localhost:8082> | `8082:80` | Ookla speed tests on a schedule |
 | Grafana | <http://localhost:3003> | `3003:3000` | The three dashboards below |
-| Uptime Kuma | <http://localhost:3002> | `3002:3001` | Independent uptime checks + status page |
 | SmokePing | <http://localhost:8081> | `8081:80` | Latency distribution graphs |
 | Prometheus | <http://localhost:9091> | `9091:9090` | Metric storage, 365-day retention |
 | Alertmanager | <http://localhost:9093> | `9093:9093` | Alert routing and grouping |
@@ -159,8 +172,7 @@ curl -X POST http://localhost:9091/-/reload
 
 Alerts land in the Alertmanager UI by default and go nowhere else.
 `alertmanager/alertmanager.yml` carries commented-out email and Slack receivers
-— uncomment one and fill it in. Uptime Kuma has its own notification providers
-(Telegram, Discord, ntfy, and others), configured in its web UI.
+— uncomment one and fill it in.
 
 ## Tuning what gets probed
 
@@ -180,13 +192,12 @@ history:
 |---------|-----|
 | Prometheus | 185 MB |
 | Grafana | 181 MB |
-| Uptime Kuma | 118 MB |
 | Speedtest Tracker | 111 MB |
 | Blackbox Exporter | 28 MB |
 | Node Exporter | 18 MB |
 | Alertmanager | 15 MB |
 | SmokePing | 13 MB |
-| **Total** | **~669 MB** |
+| **Total** | **~551 MB** |
 
 Every service carries a `mem_limit` in the Compose file. Prometheus grows with
 retention, so a fresh install starts lighter than this.

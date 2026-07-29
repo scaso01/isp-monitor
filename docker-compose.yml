@@ -3,6 +3,11 @@ services:
     image: lscr.io/linuxserver/speedtest-tracker:latest
     restart: unless-stopped
     mem_limit: 256m
+    # linuxserver images boot s6-overlay, which aborts with
+    # "s6-overlay-suexec: fatal: can only run as pid 1" unless it really is pid
+    # 1. A daemon running with "init": true in /etc/docker/daemon.json puts
+    # docker-init there instead, so pin this off rather than inherit the default.
+    init: false
     ports:
       - "8082:80"
     environment:
@@ -77,21 +82,12 @@ services:
     networks:
       - isp-monitor
 
-  uptime-kuma:
-    image: louislam/uptime-kuma:latest
-    restart: unless-stopped
-    mem_limit: 256m
-    ports:
-      - "3002:3001"
-    volumes:
-      - uptime-kuma-data:/app/data
-    networks:
-      - isp-monitor
-
   smokeping:
     image: lscr.io/linuxserver/smokeping:latest
     restart: unless-stopped
     mem_limit: 128m
+    # See the note on speedtest-tracker: s6-overlay has to be pid 1.
+    init: false
     ports:
       - "8081:80"
     environment:
@@ -149,7 +145,6 @@ volumes:
   speedtest-data:
   prometheus-data:
   grafana-data:
-  uptime-kuma-data:
   smokeping-config:
   smokeping-data:
   alertmanager-data:
