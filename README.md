@@ -39,6 +39,10 @@ evidence outlives the argument.
 
 ## Quick start
 
+Put this on a **wired** host. A speed test can only ever measure the slowest hop
+it crosses, so on Wi-Fi you will be charting your own adapter instead of your
+line, and 802.11n hardware caps out around 200 Mbps no matter what you pay for.
+
 ```bash
 git clone https://github.com/scaso01/isp-monitor.git
 cd isp-monitor
@@ -133,9 +137,18 @@ Tracker's own UI is where the full result history lives.
 The stat cards are coloured for a gigabit line, green above 800 Mbps down and 30
 up. Down and up are not symmetrical because cable is not: a gigabit cable plan
 typically uploads around 35 Mbps, so grading upload against the download figure
-would fail every test forever. The run above is behind a VPN, which is why
-download reads red at 116. Retune both `grafana/dashboards/isp-speed.json` and
-`prometheus/alert.rules` to your own plan, they carry the same numbers.
+would fail every test forever.
+
+Download reads red at 116 Mbps in that screenshot, and it is worth being clear
+why, because it is the mistake this tool exists to stop you making. The plan
+really is gigabit. The box running the stack reaches the internet over 802.11n
+Wi-Fi, which tops out near 200 Mbps in practice, and then through a VPN on top.
+The chart is honest, it is just measuring the machine's own uplink rather than
+the line into the building. **Run the stack on a wired host, or you are
+benchmarking your Wi-Fi card.**
+
+Retune both `grafana/dashboards/isp-speed.json` and `prometheus/alert.rules` to
+your own plan, they carry the same numbers.
 
 Every query on this dashboard is wrapped in `max()`. Speedtest Tracker's exporter
 stamps the Ookla server it used into `server_id`, `server_name`, `isp` and four
