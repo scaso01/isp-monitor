@@ -130,10 +130,12 @@ Tracker's own UI is where the full result history lives.
 
 ![ISP Speed Monitor dashboard](docs/images/grafana-isp-speed.png)
 
-The stat cards at the top are coloured for a gigabit line, green above 800 Mbps
-down and 400 up. The run above is on a connection behind a VPN, which is why they
-read red at 116 down. Retune the thresholds in `grafana/dashboards/isp-speed.json`
-to your own plan, or they will tell you your line is broken every day.
+The stat cards are coloured for a gigabit line, green above 800 Mbps down and 30
+up. Down and up are not symmetrical because cable is not: a gigabit cable plan
+typically uploads around 35 Mbps, so grading upload against the download figure
+would fail every test forever. The run above is behind a VPN, which is why
+download reads red at 116. Retune both `grafana/dashboards/isp-speed.json` and
+`prometheus/alert.rules` to your own plan, they carry the same numbers.
 
 Every query on this dashboard is wrapped in `max()`. Speedtest Tracker's exporter
 stamps the Ookla server it used into `server_id`, `server_name`, `isp` and four
@@ -170,7 +172,7 @@ shows up as thickness rather than being averaged away.
 | Alert | Condition | Severity |
 |-------|-----------|----------|
 | SlowDownloadSpeed | Download < 800 Mbps | Warning |
-| SlowUploadSpeed | Upload < 400 Mbps | Warning |
+| SlowUploadSpeed | Upload < 30 Mbps | Warning |
 | HighPacketLoss | Probe failing > 2 min | Critical |
 | TargetDown | Scrape target unreachable > 5 min | Critical |
 | HighLatency | Probe > 50 ms for 5 min | Warning |

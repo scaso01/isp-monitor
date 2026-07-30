@@ -1,5 +1,9 @@
-# Thresholds below are set for a gigabit fibre line on a direct connection.
-# Tune them to your own plan before you trust the alerts — on a 100/20 plan, or
+# Thresholds below assume a gigabit line on a direct connection, with the upload
+# rule set for cable rather than fibre. Cable is asymmetric: a gigabit cable plan
+# typically uploads around 35 Mbps, so a symmetrical 400 Mbps upload rule can
+# never pass and would fire on every single test.
+#
+# Tune these to your own plan before you trust the alerts — on a 100/20 plan, or
 # behind a VPN, the speed and latency rules will fire continuously and you will
 # learn to ignore them. Reload without a restart after editing:
 #   curl -X POST http://localhost:9091/-/reload
@@ -16,13 +20,13 @@ groups:
           description: "Speedtest download speed has dropped below 800 Mbps. Current value: {{ $value | humanize1024 }}bps."
 
       - alert: SlowUploadSpeed
-        expr: speedtest_tracker_upload_bits < 400000000
+        expr: speedtest_tracker_upload_bits < 30000000
         for: 0m
         labels:
           severity: warning
         annotations:
-          summary: "Upload speed below 400 Mbps ({{ $value | humanize1024 }}bps)"
-          description: "Speedtest upload speed has dropped below 400 Mbps. Current value: {{ $value | humanize1024 }}bps."
+          summary: "Upload speed below 30 Mbps ({{ $value | humanize1024 }}bps)"
+          description: "Speedtest upload speed has dropped below 30 Mbps. Current value: {{ $value | humanize1024 }}bps."
 
       - alert: HighPacketLoss
         expr: probe_success{job=~"blackbox.*"} == 0

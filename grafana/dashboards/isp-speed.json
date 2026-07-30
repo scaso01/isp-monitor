@@ -128,11 +128,11 @@
               },
               {
                 "color": "yellow",
-                "value": 200
+                "value": 20
               },
               {
                 "color": "green",
-                "value": 400
+                "value": 30
               }
             ]
           },
