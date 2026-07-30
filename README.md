@@ -128,6 +128,21 @@ table of recent runs. Note that Prometheus only records what it scrapes, so this
 dashboard starts empty and fills in from the moment you install — Speedtest
 Tracker's own UI is where the full result history lives.
 
+![ISP Speed Monitor dashboard](docs/images/grafana-isp-speed.png)
+
+The stat cards at the top are coloured for a gigabit line, green above 800 Mbps
+down and 400 up. The run above is on a connection behind a VPN, which is why they
+read red at 116 down. Retune the thresholds in `grafana/dashboards/isp-speed.json`
+to your own plan, or they will tell you your line is broken every day.
+
+Every query on this dashboard is wrapped in `max()`. Speedtest Tracker's exporter
+stamps the Ookla server it used into `server_id`, `server_name`, `isp` and four
+more labels, and Ookla hands you a different server most runs, so a bare
+selector returns one series per server ever used. Left alone the legend grows a
+fresh Download row per server, the stat cards get handed several series at once,
+and the results table renders label columns instead of speeds. Aggregating drops
+those labels at query time, which also fixes history already on disk.
+
 ### ISP Uptime & Latency
 
 Probe success timeline, HTTP latency per target, DNS lookup time, TLS

@@ -41,7 +41,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_download_bits / 1000000",
+          "expr": "max(speedtest_tracker_download_bits) / 1000000",
           "legendFormat": "Download",
           "refId": "A",
           "instant": true
@@ -110,7 +110,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_upload_bits / 1000000",
+          "expr": "max(speedtest_tracker_upload_bits) / 1000000",
           "legendFormat": "Upload",
           "refId": "A",
           "instant": true
@@ -179,7 +179,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_ping_ms",
+          "expr": "max(speedtest_tracker_ping_ms)",
           "legendFormat": "Ping",
           "refId": "A",
           "instant": true
@@ -248,7 +248,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_ping_jitter_ms",
+          "expr": "max(speedtest_tracker_ping_jitter_ms)",
           "legendFormat": "Jitter",
           "refId": "A",
           "instant": true
@@ -317,7 +317,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_download_bits / 1000000",
+          "expr": "max(speedtest_tracker_download_bits) / 1000000",
           "legendFormat": "Download",
           "refId": "A"
         },
@@ -326,7 +326,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_upload_bits / 1000000",
+          "expr": "max(speedtest_tracker_upload_bits) / 1000000",
           "legendFormat": "Upload",
           "refId": "B"
         }
@@ -455,7 +455,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_ping_ms",
+          "expr": "max(speedtest_tracker_ping_ms)",
           "legendFormat": "Ping",
           "refId": "A"
         }
@@ -572,7 +572,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_ping_jitter_ms",
+          "expr": "max(speedtest_tracker_ping_jitter_ms)",
           "legendFormat": "Jitter",
           "refId": "A"
         }
@@ -689,7 +689,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_download_bits / 1000000",
+          "expr": "max(speedtest_tracker_download_bits) / 1000000",
           "legendFormat": "Download",
           "refId": "A"
         }
@@ -771,7 +771,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_download_bits / 1000000",
+          "expr": "max(speedtest_tracker_download_bits) / 1000000",
           "legendFormat": "Download Mbps",
           "refId": "A",
           "instant": true,
@@ -782,7 +782,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_upload_bits / 1000000",
+          "expr": "max(speedtest_tracker_upload_bits) / 1000000",
           "legendFormat": "Upload Mbps",
           "refId": "B",
           "instant": true,
@@ -793,7 +793,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_ping_ms",
+          "expr": "max(speedtest_tracker_ping_ms)",
           "legendFormat": "Ping ms",
           "refId": "C",
           "instant": true,
@@ -804,7 +804,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "speedtest_tracker_ping_jitter_ms",
+          "expr": "max(speedtest_tracker_ping_jitter_ms)",
           "legendFormat": "Jitter ms",
           "refId": "D",
           "instant": true,
